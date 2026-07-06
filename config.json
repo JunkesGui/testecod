@@ -1,5 +1,8 @@
 {
-  "wake_words": ["descrever", "o que estou vendo", "olhar", "visão"],
+  "wake_words": {
+    "descrever": ["descrever", "o que estou vendo"],
+    "ler": ["ler texto", "leitura"]
+  },
   "language": "pt-BR",
   "camera_index": 0,
   "audio_device": null,

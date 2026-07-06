@@ -17,7 +17,12 @@ DEFAULT_WAKE_WORDS = ["descrever", "o que estou vendo", "olhar", "visão"]
 class AppConfig:
     """Todos os parâmetros ajustáveis do sistema, sem valores fixos no código."""
 
-    wake_words: list[str] = field(default_factory=lambda: list(DEFAULT_WAKE_WORDS))
+    wake_words: dict[str, list[str]] = field(
+        default_factory=lambda: {
+            "descrever": ["descrever", "o que estou vendo", "olhar", "visão"],
+            "ler": ["ler texto", "o que está escrito", "leia isso", "leitura"]
+        }
+    )
     language: str = "pt-BR"
     camera_index: int = 0
     audio_device: Optional[int] = None

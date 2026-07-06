@@ -11,14 +11,16 @@ from qwen_vl_utils import process_vision_info
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = (
-    "Você descreve imagens para uma pessoa com deficiência visual. Seja preciso e objetivo, "
-    "descrevendo apenas o que realmente pode ser observado na imagem. Nunca invente objetos, "
-    "pessoas ou detalhes que não estejam claramente visíveis. Priorize informações úteis para "
-    "orientação e segurança: obstáculos próximos, posição relativa dos objetos e pessoas, "
-    "expressões faciais quando visíveis, e qualquer placa ou texto legível. Use frases curtas "
-    "e linguagem direta, em Português Brasileiro."
-)
+PROMPTS = {
+    "descrever": {
+        "system": "Você descreve imagens para uma pessoa com deficiência visual. Seja preciso e objetivo, descrevendo apenas o que realmente pode ser observado na imagem. Nunca invente objetos. Priorize segurança e orientação. Use frases curtas em Português Brasileiro.",
+        "user": "Descreva o que está nesta imagem."
+    },
+    "ler": {
+        "system": "Você é um assistente de acessibilidade estritamente focado em leitura de textos (OCR). Sua ÚNICA tarefa é transcrever exatamente o texto que aparece na imagem. NUNCA descreva o ambiente. Se não contiver texto, responda EXATAMENTE com a palavra: NENHUM_TEXTO.",
+        "user": "Leia todo o texto visível nesta imagem."
+    }
+}
 
 class VisionError(Exception):
     """Erro ao obter a descrição do modelo multimodal."""
@@ -55,21 +57,22 @@ class VisionDescriber:
             logger.critical("Falha ao carregar o modelo Qwen-VL: %s", exc)
             raise VisionError(f"Erro na inicialização do modelo de visão: {exc}") from exc
 
-    def describe(self, frame: np.ndarray) -> str:
-        """Processa o frame capturado da câmera e extrai a descrição textual."""
+    def describe(self, frame: np.ndarray, modo: str = "descrever") -> str:
+        """Processa o frame capturado com base no modo selecionado."""
         try:
-            # OpenCV captura em BGR, convertemos para o padrão RGB esperado pelo Pillow/Qwen
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             pil_image = Image.fromarray(frame_rgb)
             
-            # Monta o histórico de mensagens respeitando o chat template oficial do Qwen
+            # Pega as instruções corretas baseadas no modo ("descrever" ou "ler")
+            instrucoes = PROMPTS.get(modo, PROMPTS["descrever"])
+            
             messages = [
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": instrucoes["system"]},
                 {
                     "role": "user",
                     "content": [
                         {"type": "image", "image": pil_image},
-                        {"type": "text", "text": "Descreva o que está nesta imagem."},
+                        {"type": "text", "text": instrucoes["user"]},
                     ],
                 }
             ]

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import time
 
 from camera import Camera, CameraError
 from config import AppConfig
@@ -47,8 +48,8 @@ def initialize_components(config: AppConfig):
     return camera, microphone, wake_word_detector, vision, tts_engine
 
 
-def handle_activation(camera: Camera, vision: VisionDescriber, tts_engine) -> None:
-    """Captura um frame, gera a descrição e reproduz em áudio, sem interromper o loop em erro."""
+def handle_activation(camera: Camera, vision: VisionDescriber, tts_engine, modo: str) -> None:
+    """Fluxo dinâmico baseado no modo de ativação."""
     try:
         frame = camera.capture_frame()
     except CameraError as exc:
@@ -56,21 +57,25 @@ def handle_activation(camera: Camera, vision: VisionDescriber, tts_engine) -> No
         return
 
     try:
-        description = vision.describe(frame)
-        logger.info("Descrição gerada: %s", description)
+        # Passa o modo para o modelo de visão
+        resultado = vision.describe(frame, modo=modo)
+        logger.info("Resultado gerado (%s): %s", modo, resultado)
     except VisionError as exc:
         logger.error("Erro no modelo multimodal: %s", exc)
         return
 
     try:
-        tts_engine.speak(description)
+        # Lógica de silêncio apenas se o modo for leitura
+        if modo == "ler" and "NENHUM_TEXTO" in resultado.upper():
+            tts_engine.speak("Não encontrei nenhum texto na imagem.")
+        else:
+            tts_engine.speak(resultado)
     except TTSError as exc:
         logger.error("Erro no TTS: %s", exc)
 
 
-
 def run() -> None:
-    """Loop principal: escuta continuamente e ativa o fluxo de descrição ao detectar a palavra-chave."""
+    """Loop principal: escuta continuamente e ativa o fluxo dinâmico."""
     config = AppConfig.load()
 
     try:
@@ -79,7 +84,13 @@ def run() -> None:
         logger.critical("Falha na inicialização: %s", exc)
         return
 
-    logger.info("Assistente pronto. Diga uma das palavras-chave: %s", config.wake_words)
+    logger.info("Assistente pronto. Modos disponíveis: %s", config.wake_words)
+
+    # =====================================================================
+    # ESTAS DUAS LINHAS PRECISAM FICAR AQUI, DE FORA DO LOOP 'while True'
+    # =====================================================================
+    last_activation_time = 0.0
+    COOLDOWN_SECONDS = 2.0
 
     try:
         while True:
@@ -88,17 +99,34 @@ def run() -> None:
                 continue
 
             try:
-                detected = wake_word_detector.process_chunk(chunk)
+                detected_mode = wake_word_detector.process_chunk(chunk)
             except WakeWordError as exc:
                 logger.error("Erro na detecção de palavra-chave: %s", exc)
                 continue
 
-            if detected:
-                logger.info("Palavra-chave detectada. Capturando imagem...")
+            if detected_mode is not None:
+                current_time = time.time()
+                
+                # Como last_activation_time começou com 0.0 lá em cima, 
+                # a conta matemática aqui agora vai funcionar perfeitamente!
+                if current_time - last_activation_time < COOLDOWN_SECONDS:
+                    logger.warning("Gatilho ignorado: aguardando tempo de recarga (cooldown).")
+                    wake_word_detector.reset()
+                    microphone.clear_queue()
+                    continue
+
+                logger.info("Comando detectado: Modo '%s'. Capturando imagem...", detected_mode)
                 wake_word_detector.reset()
-                handle_activation(camera, vision, tts_engine)
+                
+                handle_activation(camera, vision, tts_engine, modo=detected_mode)
+                
                 microphone.clear_queue()
+                
+                # Atualiza a variável para o momento atual após falar
+                last_activation_time = time.time()
+                
                 logger.info("Retornando ao modo de escuta.")
+                
     except KeyboardInterrupt:
         logger.info("Encerrando por solicitação do usuário.")
     except Exception as exc:

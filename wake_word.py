@@ -20,19 +20,23 @@ class WakeWordError(Exception):
 class WakeWordDetector:
     """Detecta, em um fluxo contínuo de áudio, se alguma palavra/frase de ativação foi dita."""
 
-    def __init__(self, model_path: str, sample_rate: int, wake_words: Iterable[str]) -> None:
+    # Recebe um dicionário agora
+    def __init__(self, model_path: str, sample_rate: int, wake_words: dict[str, list[str]]) -> None:
         path = Path(model_path)
         if not path.exists():
-            raise WakeWordError(
-                f"Modelo Vosk não encontrado em '{model_path}'. Baixe um modelo pt-BR em "
-                "https://alphacephei.com/vosk/models e ajuste 'vosk_model_path' no config.json."
-            )
+            raise WakeWordError(f"Modelo Vosk não encontrado em '{model_path}'.")
         self._model = Model(model_path)
         self._recognizer = KaldiRecognizer(self._model, sample_rate)
-        self._wake_words = [w.lower().strip() for w in wake_words]
+        
+        # Converte todas as palavras do dicionário para minúsculas
+        self._wake_words = {
+            mode: [w.lower().strip() for w in words] 
+            for mode, words in wake_words.items()
+        }
 
-    def process_chunk(self, chunk: bytes) -> bool:
-        """Alimenta um bloco de áudio. Retorna True se uma palavra-chave foi detectada."""
+    # Retorna uma string (o modo) ou None
+    def process_chunk(self, chunk: bytes) -> str | None:
+        """Alimenta um bloco de áudio. Retorna o modo detectado ou None."""
         try:
             if self._recognizer.AcceptWaveform(chunk):
                 result = json.loads(self._recognizer.Result())
@@ -40,16 +44,18 @@ class WakeWordDetector:
             else:
                 partial = json.loads(self._recognizer.PartialResult())
                 text = partial.get("partial", "").lower()
-            return self._matches(text)
+            return self._get_detected_mode(text)
         except Exception as exc:
-            raise WakeWordError(
-                f"Falha ao processar áudio para detecção de palavra-chave: {exc}"
-            ) from exc
+            raise WakeWordError(f"Falha ao processar áudio: {exc}") from exc
 
-    def _matches(self, text: str) -> bool:
+    def _get_detected_mode(self, text: str) -> str | None:
         if not text:
-            return False
-        return any(wake_word in text for wake_word in self._wake_words)
+            return None
+        # Verifica qual modo teve uma de suas palavras ditas
+        for mode, words in self._wake_words.items():
+            if any(wake_word in text for wake_word in words):
+                return mode
+        return None
 
     def reset(self) -> None:
         """Reinicia o estado do reconhecedor após uma ativação, evitando re-disparos indevidos."""
