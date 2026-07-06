@@ -1,0 +1,15 @@
+{
+  "wake_words": ["descrever", "o que estou vendo", "olhar", "visão"],
+  "language": "pt-BR",
+  "camera_index": 0,
+  "audio_device": null,
+  "sample_rate": 16000,
+  "model_temperature": 0.2,
+  "max_description_length": 400,
+  "voice_rate": 175,
+  "voice_volume": 1.0,
+  "vision_provider": "openai",
+  "vision_model": "gpt-4o-mini",
+  "tts_engine": "pyttsx3",
+  "vosk_model_path": "models/vosk-model-small-pt-br"
+}

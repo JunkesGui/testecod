@@ -1,0 +1,6 @@
+opencv-python
+sounddevice
+numpy
+vosk
+openai
+pyttsx3
