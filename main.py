@@ -68,6 +68,7 @@ def handle_activation(camera: Camera, vision: VisionDescriber, tts_engine) -> No
         logger.error("Erro no TTS: %s", exc)
 
 
+
 def run() -> None:
     """Loop principal: escuta continuamente e ativa o fluxo de descrição ao detectar a palavra-chave."""
     config = AppConfig.load()
@@ -96,6 +97,7 @@ def run() -> None:
                 logger.info("Palavra-chave detectada. Capturando imagem...")
                 wake_word_detector.reset()
                 handle_activation(camera, vision, tts_engine)
+                microphone.clear_queue()
                 logger.info("Retornando ao modo de escuta.")
     except KeyboardInterrupt:
         logger.info("Encerrando por solicitação do usuário.")

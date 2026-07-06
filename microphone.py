@@ -56,6 +56,12 @@ class Microphone:
             return self._queue.get(timeout=timeout)
         except queue.Empty:
             return None
+        
+    def clear_queue(self) -> None:
+        """Limpa todo o áudio acumulado na fila."""
+        with self._queue.mutex:
+            self._queue.queue.clear()
+        logger.debug("Fila do microfone limpa.")
 
     def stop(self) -> None:
         """Para e libera o stream de áudio."""

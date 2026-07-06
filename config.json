@@ -8,8 +8,8 @@
   "max_description_length": 400,
   "voice_rate": 175,
   "voice_volume": 1.0,
-  "vision_provider": "openai",
-  "vision_model": "gpt-4o-mini",
-  "tts_engine": "pyttsx3",
+  "vision_provider": "local",
+  "vision_model": "Qwen/Qwen2-VL-2B-Instruct",
+  "tts_engine": "piper",
   "vosk_model_path": "models/vosk-model-small-pt-br"
 }

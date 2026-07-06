@@ -2,5 +2,8 @@ opencv-python
 sounddevice
 numpy
 vosk
-openai
+transformers
+accelerate
+qwen-vl-utils
 pyttsx3
+piper-tts
